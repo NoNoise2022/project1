@@ -49,6 +49,10 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+/* customed */ //proj.1
+static int64_t next_tick_to_awake;
+
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -307,6 +311,36 @@ thread_yield (void) {
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
+
+/* customed */  // proj.1.
+void thread_sleep(int64_t ticks) {
+
+	  /* if the current thread is not idle thread,
+	change the state of the caller thread to BLOCKED,
+	store the local tick to wake up,
+	update the global tick if necessary,
+	and call schedule() */
+  	/* When you manipulate thread list, 
+  	disable interrupt! */
+
+    struct thread *curr = thread_current();
+    ASSERT(curr != idle_thread); // Idle 스레드가 아닌지 확인
+
+    enum intr_level old_level = intr_disable(); // 인터럽트 비활성화
+
+    curr->status = THREAD_BLOCKED; // 현재 스레드 상태를 BLOCKED로 변경
+    curr->wakeup_tick = ticks; // 깨어날 틱 저장
+
+    if (ticks > next_tick_to_awake)
+        next_tick_to_awake = ticks; // 다음 깨어날 틱 업데이트
+
+    schedule(); // 스케줄링 함수 호출
+
+    intr_set_level(old_level); // 이전 인터럽트 상태로 복원
+}
+
+
+
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void

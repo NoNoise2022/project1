@@ -95,6 +95,10 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
+	/* customed */ // proj.1
+	int64_t wakeup_tick;
+
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -113,6 +117,9 @@ struct thread {
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+
+/* customed */ // proj.1.
+void thread_sleep(int64_t ticks);
 
 void thread_init (void);
 void thread_start (void);
