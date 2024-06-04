@@ -7,6 +7,7 @@
 #include "threads/io.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/fp-ops.h"
 
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -19,6 +20,8 @@
 
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
+/* customed */
+// static int64_t global_wakeup_tick = __INT64_MAX__;
 
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
@@ -88,20 +91,17 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
-/* customed */ // proj.1.
 void
-timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks ();
+timer_sleep (int64_t ticks) {				// tick (0.01 s => 10ms) 만큼 sleep 하라!
+	// int64_t start = timer_ticks ();
 
-	ASSERT (intr_get_level () == INTR_ON);
-	
+	ASSERT (intr_get_level () == INTR_ON);	// 인터럽트 끄지 말 것.
 	// while (timer_elapsed (start) < ticks)
 	// 	thread_yield ();
-	
-	// if(timer_elapsed (start) < ticks)
-	// 	thread_sleep(start + ticks); 
-	thread_sleep (start + ticks);
 
+	/* customed */
+	// if (timer_ticks() < ticks)
+	thread_sleep(timer_ticks() + ticks);
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -132,9 +132,27 @@ timer_print_stats (void) {
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
-	thread_tick ();
+	thread_tick ();		// update the cpu usage for running process
+	
+	/* advanced */
+	if (thread_mlfqs) 
+	{
+		/* increase recent_cpu */
+		recent_cpu_add_1();
 
-	thread_awake (ticks);
+		if (timer_ticks() % 4 == 0)
+		{
+			recalculate_priority();
+		}
+
+		if (timer_ticks() % TIMER_FREQ == 0)
+		{
+			calculate_load_avg();
+			recalculate_recent_cpu();
+		}
+	}
+	
+	thread_wakeup (ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
@@ -193,3 +211,13 @@ real_time_sleep (int64_t num, int32_t denom) {
 		busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000));
 	}
 }
+
+/* customed */
+// int64_t get_global_wakeup_tick() {
+// 	return global_wakeup_tick;
+// }
+
+// void set_global_wakeup_tick(int64_t set) {
+// 	global_wakeup_tick = MIN(set, global_wakeup_tick);
+// }
+/* customed */
